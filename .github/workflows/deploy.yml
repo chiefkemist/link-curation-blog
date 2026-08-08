@@ -38,7 +38,7 @@ jobs:
         run: deno task build
 
       - name: Verify Fresh production entrypoint
-        run: deno check deploy-entrypoint.ts
+        run: test -f _fresh/server.js
 
   deploy:
     needs: validate
@@ -57,12 +57,9 @@ jobs:
             '{
               assets: {},
               config: {
+                framework: "fresh",
                 install: "deno install",
-                build: "deno task build",
-                runtime: {
-                  type: "dynamic",
-                  entrypoint: "deploy-entrypoint.ts"
-                }
+                build: "deno task build"
               },
               labels: { "custom.git_sha": $sha },
               production: {
@@ -70,7 +67,7 @@ jobs:
               }
             }' > deploy-payload.json
 
-          for asset in deno.json deno.lock main.ts client.ts vite.config.ts deploy-entrypoint.ts assets/styles.css $(rg --files lib routes posts | sort); do
+          for asset in deno.json deno.lock main.ts client.ts vite.config.ts assets/styles.css $(rg --files lib routes posts | sort); do
             content=$(base64 -w0 "$asset")
             jq --arg path "$asset" --arg content "$content" \
               '.assets[$path] = {
