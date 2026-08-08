@@ -29,16 +29,13 @@ jobs:
         run: deno install
 
       - name: Check formatting
-        run: deno fmt --check main.ts client.ts vite.config.ts deploy-entrypoint.ts lib routes
+        run: deno fmt --check main.ts client.ts vite.config.ts lib routes
 
       - name: Type-check Fresh app
         run: deno check main.ts client.ts vite.config.ts lib/posts.ts routes/index.tsx 'routes/posts/[slug].tsx'
 
       - name: Build Fresh app
         run: deno task build
-
-      - name: Type-check deploy entrypoint
-        run: deno check deploy-entrypoint.ts
 
   deploy:
     needs: validate
@@ -61,9 +58,6 @@ jobs:
       - name: Build Fresh app
         run: deno task build
 
-      - name: Type-check deploy entrypoint
-        run: deno check deploy-entrypoint.ts
-
       - name: Build Deno Deploy v2 request
         env:
           GIT_SHA: ${{ github.sha }}
@@ -72,18 +66,15 @@ jobs:
             '{
               assets: {},
               config: {
+                framework: "fresh",
                 install: "deno install",
-                build: "deno task build",
-                runtime: {
-                  type: "dynamic",
-                  entrypoint: "deploy-entrypoint.ts"
-                }
+                build: "deno task build"
               },
               labels: { "custom.git_sha": $sha },
               production: true
             }' > deploy-payload.json
 
-          for asset in deno.json deno.lock main.ts client.ts vite.config.ts deploy-entrypoint.ts assets/styles.css $(rg --files lib routes posts | sort); do
+          for asset in deno.json deno.lock main.ts client.ts vite.config.ts assets/styles.css $(rg --files lib routes posts | sort); do
             content=$(base64 -w0 "$asset")
             jq --arg path "$asset" --arg content "$content" \
               '.assets[$path] = {
@@ -110,6 +101,7 @@ jobs:
 
           revision_id=$(jq -r '.id // empty' <<<"$response")
           test -n "$revision_id"
+          deployed=false
 
           for attempt in $(seq 1 60); do
             revision=$(curl --fail-with-body --silent --show-error \
@@ -120,7 +112,8 @@ jobs:
 
             case "$status" in
               succeeded)
-                exit 0
+                deployed=true
+                break
                 ;;
               failed|skipped)
                 jq -c '{status, failure_reason, failure_detail}' <<<"$revision"
@@ -131,5 +124,18 @@ jobs:
             sleep 5
           done
 
-          echo "Timed out waiting for Deno revision $revision_id"
-          exit 1
+          if [ "$deployed" != true ]; then
+            echo "Timed out waiting for Deno revision $revision_id"
+            exit 1
+          fi
+
+      - name: Verify production routes
+        env:
+          BLOG_URL: https://link-curation-blog.outcastgeek-tech.deno.net
+        run: |
+          home=$(curl --fail-with-body --silent --show-error "$BLOG_URL/")
+          grep -Fq "Link Curation Blog" <<<"$home"
+          post_path=$(grep -oE 'href="/posts/[^"]+' <<<"$home" | head -n 1 | cut -d '"' -f 2)
+          test -n "$post_path"
+          post=$(curl --fail-with-body --silent --show-error "$BLOG_URL$post_path")
+          grep -Fq "Source" <<<"$post"

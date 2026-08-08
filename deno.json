@@ -5,6 +5,11 @@
     "build": "vite build",
     "start": "deno serve -A _fresh/server.js"
   },
+  "deploy": {
+    "framework": "fresh",
+    "install": "deno install",
+    "build": "deno task build"
+  },
   "imports": {
     "fresh": "jsr:@fresh/core@^2.2.2",
     "preact": "npm:preact@^10",
