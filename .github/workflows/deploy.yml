@@ -59,7 +59,7 @@ jobs:
                   entrypoint: "index.tsx"
                 }
               },
-              labels: { "git_sha": $sha },
+              labels: { "custom.git_sha": $sha },
               production: true
             }' > deploy-payload.json
 
