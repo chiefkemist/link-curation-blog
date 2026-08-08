@@ -68,16 +68,12 @@ jobs:
         env:
           GIT_SHA: ${{ github.sha }}
         run: |
-          jq -n --rawfile entrypoint deploy-entrypoint.ts --arg sha "$GIT_SHA" \
+          jq -n --arg sha "$GIT_SHA" \
             '{
-              assets: {
-                "deploy-entrypoint.ts": {
-                  kind: "file",
-                  encoding: "utf-8",
-                  content: $entrypoint
-                }
-              },
+              assets: {},
               config: {
+                install: "deno install",
+                build: "deno task build",
                 runtime: {
                   type: "dynamic",
                   entrypoint: "deploy-entrypoint.ts"
@@ -87,7 +83,7 @@ jobs:
               production: true
             }' > deploy-payload.json
 
-          for asset in $(rg --files _fresh posts | sort); do
+          for asset in deno.json deno.lock main.ts client.ts vite.config.ts deploy-entrypoint.ts $(rg --files assets lib routes posts | sort); do
             content=$(base64 -w0 "$asset")
             jq --arg path "$asset" --arg content "$content" \
               '.assets[$path] = {
@@ -103,9 +99,35 @@ jobs:
           DENO_DEPLOY_TOKEN: ${{ secrets.DENO_DEPLOY_TOKEN }}
         run: |
           test -n "$DENO_DEPLOY_TOKEN"
-          curl --fail-with-body --silent --show-error \
+          response=$(curl --fail-with-body --silent --show-error \
             --request POST \
             --header "Authorization: Bearer $DENO_DEPLOY_TOKEN" \
             --header "Content-Type: application/json" \
             --data @deploy-payload.json \
-            "https://api.deno.com/v2/apps/$DENO_APP_SLUG/deploy"
+            "https://api.deno.com/v2/apps/$DENO_APP_SLUG/deploy")
+
+          revision_id=$(jq -r '.id // empty' <<<"$response")
+          test -n "$revision_id"
+
+          for attempt in $(seq 1 60); do
+            revision=$(curl --fail-with-body --silent --show-error \
+              --header "Authorization: Bearer $DENO_DEPLOY_TOKEN" \
+              "https://api.deno.com/v2/revisions/$revision_id")
+            status=$(jq -r '.status // empty' <<<"$revision")
+            echo "Deno revision $revision_id: $status"
+
+            case "$status" in
+              succeeded)
+                exit 0
+                ;;
+              failed|skipped)
+                jq -c '{status, failure_reason, failure_detail}' <<<"$revision"
+                exit 1
+                ;;
+            esac
+
+            sleep 5
+          done
+
+          echo "Timed out waiting for Deno revision $revision_id"
+          exit 1
