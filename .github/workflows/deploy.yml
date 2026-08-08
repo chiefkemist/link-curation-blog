@@ -64,85 +64,29 @@ jobs:
       - name: Verify Fresh production entrypoint
         run: test -f _fresh/compiled-entry.js
 
-      - name: Build Deno Deploy v2 request
-        env:
-          GIT_SHA: ${{ github.sha }}
-        run: |
-          jq -n --arg sha "$GIT_SHA" \
-            '{
-              assets: {},
-              config: {
-                install: "deno install",
-                build: "deno task build",
-                runtime: {
-                  type: "dynamic",
-                  entrypoint: "_fresh/compiled-entry.js"
-                }
-              },
-              labels: { "custom.git_sha": $sha },
-              production: true
-            }' > deploy-payload.json
-
-          for asset in deno.json deno.lock main.ts client.ts vite.config.ts assets/styles.css $(rg --files lib routes posts | sort); do
-            content=$(base64 -w0 "$asset")
-            jq --arg path "$asset" --arg content "$content" \
-              '.assets[$path] = {
-                kind: "file",
-                encoding: "base64",
-                content: $content
-              }' deploy-payload.json > deploy-payload.next.json
-            mv deploy-payload.next.json deploy-payload.json
-          done
-
-          test -n "$(jq -r '.assets["assets/styles.css"].content // empty' deploy-payload.json)"
-
       - name: Deploy to Deno Deploy
         env:
           DENO_DEPLOY_TOKEN: ${{ secrets.DENO_DEPLOY_TOKEN }}
         run: |
           test -n "$DENO_DEPLOY_TOKEN"
-          response=$(curl --fail-with-body --silent --show-error \
-            --request POST \
-            --header "Authorization: Bearer $DENO_DEPLOY_TOKEN" \
-            --header "Content-Type: application/json" \
-            --data @deploy-payload.json \
-            "https://api.deno.com/v2/apps/$DENO_APP_SLUG/deploy")
-
-          revision_id=$(jq -r '.id // empty' <<<"$response")
-          test -n "$revision_id"
-          deployed=false
-
-          for attempt in $(seq 1 60); do
-            revision=$(curl --fail-with-body --silent --show-error \
-              --header "Authorization: Bearer $DENO_DEPLOY_TOKEN" \
-              "https://api.deno.com/v2/revisions/$revision_id")
-            status=$(jq -r '.status // empty' <<<"$revision")
-            echo "Deno revision $revision_id: $status"
-
-            case "$status" in
-              succeeded)
-                deployed=true
-                break
-                ;;
-              failed|skipped)
-                jq -c '{status, failure_reason, failure_detail}' <<<"$revision"
-                exit 1
-                ;;
-            esac
-
-            sleep 5
-          done
-
-          if [ "$deployed" != true ]; then
-            echo "Timed out waiting for Deno revision $revision_id"
-            exit 1
-          fi
+          deno deploy . \
+            --json \
+            --non-interactive \
+            --org outcastgeek-tech \
+            --app "$DENO_APP_SLUG" \
+            --prod
 
       - name: Verify production routes
         env:
           BLOG_URL: https://link-curation-blog.outcastgeek-tech.deno.net
         run: |
-          home=$(curl --fail-with-body --silent --show-error "$BLOG_URL/")
+          for attempt in $(seq 1 30); do
+            if home=$(curl --fail-with-body --silent --show-error "$BLOG_URL/"); then
+              break
+            fi
+            sleep 2
+          done
+          test -n "${home:-}"
           grep -Fq "Link Curation Blog" <<<"$home"
           post_path=$(grep -oE 'href="/posts/[^"]+' <<<"$home" | head -n 1 | cut -d '"' -f 2)
           test -n "$post_path"
