@@ -32,13 +32,13 @@ jobs:
         run: deno fmt --check main.ts client.ts vite.config.ts lib routes
 
       - name: Type-check Fresh app
-        run: deno check main.ts client.ts vite.config.ts lib/posts.ts routes/index.tsx 'routes/posts/[slug].tsx'
+        run: deno check main.ts client.ts vite.config.ts deploy-entrypoint.ts lib/posts.ts routes/index.tsx 'routes/posts/[slug].tsx'
 
       - name: Build Fresh app
         run: deno task build
 
       - name: Verify Fresh production entrypoint
-        run: test -f _fresh/compiled-entry.js
+        run: deno check deploy-entrypoint.ts
 
   deploy:
     needs: validate
@@ -61,7 +61,7 @@ jobs:
                 build: "deno task build",
                 runtime: {
                   type: "dynamic",
-                  entrypoint: "_fresh/compiled-entry.js"
+                  entrypoint: "deploy-entrypoint.ts"
                 }
               },
               labels: { "custom.git_sha": $sha },
@@ -70,7 +70,7 @@ jobs:
               }
             }' > deploy-payload.json
 
-          for asset in deno.json deno.lock main.ts client.ts vite.config.ts assets/styles.css $(rg --files lib routes posts | sort); do
+          for asset in deno.json deno.lock main.ts client.ts vite.config.ts deploy-entrypoint.ts assets/styles.css $(rg --files lib routes posts | sort); do
             content=$(base64 -w0 "$asset")
             jq --arg path "$asset" --arg content "$content" \
               '.assets[$path] = {

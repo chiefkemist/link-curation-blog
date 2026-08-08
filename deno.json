@@ -10,7 +10,7 @@
     "build": "deno task build",
     "runtime": {
       "type": "dynamic",
-      "entrypoint": "_fresh/compiled-entry.js"
+      "entrypoint": "deploy-entrypoint.ts"
     }
   },
   "imports": {
