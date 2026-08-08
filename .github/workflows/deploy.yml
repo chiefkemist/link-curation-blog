@@ -19,34 +19,10 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Build Deno Deploy source request
-        env:
-          GIT_SHA: ${{ github.sha }}
-        run: |
-          jq -n --arg sha "$GIT_SHA" \
-            '{
-              assets: {},
-              config: {
-                framework: "fresh",
-                install: "deno install",
-                build: "deno task build"
-              },
-              labels: { "custom.git_sha": $sha },
-              production: {
-                domains: ["link-curation-blog.outcastgeek-tech.deno.net"]
-              }
-            }' > deploy-payload.json
-
-          for asset in deno.json deno.lock main.ts client.ts vite.config.ts assets/styles.css $(rg --files lib routes posts | sort); do
-            content=$(base64 -w0 "$asset")
-            jq --arg path "$asset" --arg content "$content" \
-              '.assets[$path] = {
-                kind: "file",
-                encoding: "base64",
-                content: $content
-              }' deploy-payload.json > deploy-payload.next.json
-            mv deploy-payload.next.json deploy-payload.json
-          done
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
           cache: true
 
       - name: Install Fresh dependencies
@@ -92,10 +68,34 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Install Deno
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.x
+      - name: Build Deno Deploy source request
+        env:
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          jq -n --arg sha "$GIT_SHA" \
+            '{
+              assets: {},
+              config: {
+                framework: "fresh",
+                install: "deno install",
+                build: "deno task build"
+              },
+              labels: { "custom.git_sha": $sha },
+              production: {
+                domains: ["link-curation-blog.outcastgeek-tech.deno.net"]
+              }
+            }' > deploy-payload.json
+
+          for asset in deno.json deno.lock main.ts client.ts vite.config.ts assets/styles.css $(rg --files lib routes posts | sort); do
+            content=$(base64 -w0 "$asset")
+            jq --arg path "$asset" --arg content "$content" \
+              '.assets[$path] = {
+                kind: "file",
+                encoding: "base64",
+                content: $content
+              }' deploy-payload.json > deploy-payload.next.json
+            mv deploy-payload.next.json deploy-payload.json
+          done
 
       - name: Deploy to Deno Deploy
         env:
