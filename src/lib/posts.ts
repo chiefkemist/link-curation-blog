@@ -1,4 +1,6 @@
-import { render } from "@deno/gfm";
+import { marked } from "marked";
+import sanitizeHtml from "sanitize-html";
+import generatedPosts from "../generated-posts.json";
 
 export interface Post {
   slug: string;
@@ -13,12 +15,6 @@ export interface Post {
 }
 
 type Frontmatter = Record<string, string | string[]>;
-
-const postModules = import.meta.glob<string>("../posts/*.md", {
-  eager: true,
-  import: "default",
-  query: "?raw",
-});
 
 function parseValue(value: string): string | string[] {
   if (value.startsWith('"') && value.endsWith('"')) {
@@ -38,16 +34,15 @@ function parseValue(value: string): string | string[] {
 
 function parsePost(text: string, slug: string): Post {
   const match = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-  if (!match) {
-    throw new Error("Missing frontmatter in " + slug);
-  }
+  if (!match) throw new Error(`Missing frontmatter in ${slug}`);
 
   const frontmatter: Frontmatter = {};
   for (const line of match[1].split("\n")) {
     const separator = line.indexOf(":");
     if (separator < 0) continue;
-    const key = line.slice(0, separator).trim();
-    frontmatter[key] = parseValue(line.slice(separator + 1).trim());
+    frontmatter[line.slice(0, separator).trim()] = parseValue(
+      line.slice(separator + 1).trim(),
+    );
   }
 
   return {
@@ -63,16 +58,15 @@ function parsePost(text: string, slug: string): Post {
   };
 }
 
-export async function loadPosts(): Promise<Post[]> {
-  const posts = Object.entries(postModules).map(([path, text]) => {
-    const filename = path.slice(path.lastIndexOf("/") + 1);
-    return parsePost(text, filename.slice(0, -3));
-  });
+const posts = generatedPosts
+  .map(({ slug, markdown }) => parsePost(markdown, slug))
+  .sort((a, b) => b.sourceSharedAt.localeCompare(a.sourceSharedAt));
 
-  return posts.sort((a, b) => b.sourceSharedAt.localeCompare(a.sourceSharedAt));
+export function loadPosts(): Post[] {
+  return posts;
 }
 
-export function findPost(posts: Post[], slug: string): Post | undefined {
+export function findPost(slug: string): Post | undefined {
   return posts.find((post) => post.slug === slug);
 }
 
@@ -82,5 +76,17 @@ export function renderMarkdown(markdown: string): string {
     "[$2]($1)",
   );
 
-  return render(withSourceLinks);
+  return sanitizeHtml(String(marked.parse(withSourceLinks)), {
+    allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
+    allowedAttributes: {
+      ...sanitizeHtml.defaults.allowedAttributes,
+      a: ["href", "name", "target", "rel"],
+      img: ["src", "alt", "title"],
+    },
+    transformTags: {
+      a: sanitizeHtml.simpleTransform("a", {
+        rel: "noopener noreferrer",
+      }),
+    },
+  });
 }

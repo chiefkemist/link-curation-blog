@@ -1,3 +1,6 @@
 node_modules/
+.output/
+dist/
 _fresh/
+src/generated-posts.json
 .DS_Store

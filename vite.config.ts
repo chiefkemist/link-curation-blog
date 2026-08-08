@@ -1,22 +1,18 @@
-import { defineConfig, type Plugin } from "vite";
-import { fresh } from "@fresh/plugin-vite";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import viteReact from "@vitejs/plugin-react";
+import { nitro } from "nitro/vite";
+import { defineConfig } from "vite";
 
 export default defineConfig({
-  plugins: [markdownRaw(), fresh()],
+  server: {
+    port: 3000,
+  },
+  resolve: {
+    tsconfigPaths: true,
+  },
+  plugins: [
+    tanstackStart({ srcDirectory: "src" }),
+    viteReact(),
+    nitro(),
+  ],
 });
-
-function markdownRaw(): Plugin {
-  return {
-    name: "blog:markdown-raw",
-    enforce: "pre",
-    async load(id) {
-      const [path] = id.split("?", 1);
-      if (!path.endsWith(".md")) {
-        return null;
-      }
-
-      const markdown = await Deno.readTextFile(path);
-      return `export default ${JSON.stringify(markdown)};`;
-    },
-  };
-}

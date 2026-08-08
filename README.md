@@ -1,27 +1,32 @@
 # Link Curation Blog
 
-Fresh 2 application for rendering the Markdown posts collected from the Ubuntu TechHive Discord channel.
+TanStack Start application for rendering the Markdown links curated by the
+Ubuntu TechHive community.
 
-## Structure
+## Stack
 
-- routes/ contains the Fresh index and individual post routes.
-- lib/posts.ts parses frontmatter, renders the supported Markdown subset, and expands source-link shortcodes.
-- posts/ contains the 1,141 imported Markdown posts with Discord provenance.
-- assets/styles.css contains the site stylesheet loaded by the Fresh Vite client entrypoint.
+- TanStack Start and TanStack Router provide full-document React SSR and routing.
+- Nitro produces the production server consumed by Deno Deploy.
+- `marked` renders Markdown and `sanitize-html` sanitizes the generated HTML.
+- `scripts/generate-posts.mjs` compiles the Markdown corpus into one generated
+  JSON asset before the application build.
 
-## Local development
+## Development
 
-Install dependencies and build:
+```sh
+npm install
+npm run generate
+npm run dev
+```
 
-    deno install
-    deno task build
+## Production verification
 
-Start the production server:
+```sh
+npm run generate
+npm run build
+npm start
+```
 
-    deno task start
-
-Start Vite development mode:
-
-    deno task dev
-
-Fresh 2 uses Vite for development and production builds. The build output is written to _fresh/ and the deployment workflow packages that server plus the posts and static assets.
+The generated production server listens on port 3000 by default. GitHub Actions
+checks both the home page and a rendered post before and after deploying to Deno
+Deploy.

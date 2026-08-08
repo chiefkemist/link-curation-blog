@@ -1,0 +1,30 @@
+{
+  "name": "link-curation-blog",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "generate": "node scripts/generate-posts.mjs",
+    "build": "vite build && tsc --noEmit",
+    "start": "node .output/server/index.mjs"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "^1.170.23",
+    "@tanstack/react-start": "^1.168.40",
+    "marked": "^17.0.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sanitize-html": "^2.17.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.4",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@types/sanitize-html": "^2.16.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "nitro": "^3.0.260311-beta",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.14"
+  }
+}

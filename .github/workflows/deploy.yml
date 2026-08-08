@@ -19,36 +19,32 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Install Deno
-        uses: denoland/setup-deno@v2
+      - name: Install Node.js
+        uses: actions/setup-node@v4
         with:
-          deno-version: v2.x
-          cache: true
+          node-version: 24
+          cache: npm
 
-      - name: Install Fresh dependencies
-        run: deno install
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Check formatting
-        run: deno fmt --check main.ts client.ts vite.config.ts lib routes
+      - name: Generate post data
+        run: npm run generate
 
-      - name: Type-check Fresh app
-        run: deno check main.ts client.ts vite.config.ts lib/posts.ts routes/index.tsx 'routes/posts/[slug].tsx'
+      - name: Build and type-check TanStack Start
+        run: npm run build
 
-      - name: Build Fresh app
-        run: deno task build
-
-      - name: Verify Fresh production entrypoint
+      - name: Verify TanStack Start production server
         run: |
-          test -f _fresh/server.js
-          deno run -A deploy-entrypoint.ts &
+          test -f .output/server/index.mjs
+          PORT=3000 npm start &
           server_pid=$!
           trap 'kill "$server_pid"' EXIT
 
           for attempt in $(seq 1 30); do
-            if home=$(curl --fail-with-body --silent --show-error http://127.0.0.1:8000/); then
-              if post=$(curl --fail-with-body --silent --show-error http://127.0.0.1:8000/posts/010-ai-and-the-university); then
-                if [[ "$home" == *"Link Curation Blog"* && "$post" == *"Watch the original video"* ]]; then
-                  [[ "$post" == *"markdown-body"* ]]
+            if home=$(curl --fail-with-body --silent --show-error http://127.0.0.1:3000/); then
+              if post=$(curl --fail-with-body --silent --show-error http://127.0.0.1:3000/posts/010-ai-and-the-university); then
+                if [[ "$home" == *"Link Curation Blog"* && "$post" == *"Watch the original video"* && "$post" == *"markdown-body"* ]]; then
                   exit 0
                 fi
               fi
@@ -56,7 +52,7 @@ jobs:
             sleep 1
           done
 
-          echo "Fresh production entrypoint did not serve the blog"
+          echo "TanStack Start production server did not serve the blog"
           exit 1
 
   deploy:
@@ -68,6 +64,17 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Generate deployment data
+        run: |
+          npm ci
+          npm run generate
+
       - name: Build Deno Deploy source request
         env:
           GIT_SHA: ${{ github.sha }}
@@ -76,11 +83,11 @@ jobs:
             '{
               assets: {},
               config: {
-                install: "deno install",
-                build: "deno task build",
+                install: "npm ci",
+                build: "npm run build",
                 runtime: {
                   type: "dynamic",
-                  entrypoint: "deploy-entrypoint.ts"
+                  entrypoint: ".output/server/index.mjs"
                 }
               },
               labels: { "custom.git_sha": $sha },
@@ -89,7 +96,7 @@ jobs:
               }
             }' > deploy-payload.json
 
-          for asset in deno.json deno.lock main.ts client.ts vite.config.ts deploy-entrypoint.ts assets/styles.css $(rg --files lib routes posts | sort); do
+          for asset in deno.json package.json package-lock.json tsconfig.json vite.config.ts src/generated-posts.json $(rg --files src scripts | sort); do
             content=$(base64 -w0 "$asset")
             jq --arg path "$asset" --arg content "$content" \
               '.assets[$path] = {
@@ -159,7 +166,8 @@ jobs:
             fi
             sleep 2
           done
-          echo "Deno Deploy did not serve the Fresh blog within one minute"
+
+          echo "Deno Deploy did not serve the TanStack Start blog within one minute"
           start=$(date -u -d '10 minutes ago' +%Y-%m-%dT%H:%M:%SZ)
           end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           curl --fail-with-body --silent --show-error \
