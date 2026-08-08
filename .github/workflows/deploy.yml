@@ -49,8 +49,8 @@ jobs:
               if [[ "$home" =~ href=\"(/posts/[^\"]+)\" ]]; then
                 post_path="${BASH_REMATCH[1]}"
                 post=$(curl --fail-with-body --silent --show-error "http://127.0.0.1:8000$post_path")
-                grep -Fq "Link Curation Blog" <<<"$home"
-                grep -Fq "Source" <<<"$post"
+                [[ "$home" == *"Link Curation Blog"* ]]
+                [[ "$post" == *"Source"* ]]
                 exit 0
               fi
             fi
@@ -97,7 +97,7 @@ jobs:
               if [[ "$home" =~ href=\"(/posts/[^\"]+)\" ]]; then
                 post_path="${BASH_REMATCH[1]}"
                 post=$(curl --fail-with-body --silent --show-error "$BLOG_URL$post_path")
-                if grep -Fq "Link Curation Blog" <<<"$home" && grep -Fq "Source" <<<"$post"; then
+                if [[ "$home" == *"Link Curation Blog"* && "$post" == *"Source"* ]]; then
                   exit 0
                 fi
               fi
