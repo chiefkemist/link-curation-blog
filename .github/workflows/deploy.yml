@@ -1,0 +1,76 @@
+name: Validate and deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+          cache: true
+
+      - name: Check formatting
+        run: deno fmt --check index.tsx
+
+      - name: Type-check entrypoint
+        run: deno check index.tsx
+
+  deploy:
+    needs: validate
+    runs-on: ubuntu-latest
+    env:
+      DENO_APP_SLUG: link-curation-blog
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build Deno Deploy v2 request
+        env:
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          jq -n --rawfile source index.tsx --arg sha "$GIT_SHA" \
+            '{
+              assets: {
+                "index.tsx": {
+                  kind: "file",
+                  encoding: "utf-8",
+                  content: $source
+                }
+              },
+              config: {
+                runtime: {
+                  type: "dynamic",
+                  entrypoint: "index.tsx"
+                }
+              },
+              labels: { "git_sha": $sha },
+              production: true
+            }' > deploy-payload.json
+
+      - name: Deploy to Deno Deploy
+        env:
+          DENO_DEPLOY_TOKEN: ${{ secrets.DENO_DEPLOY_TOKEN }}
+        run: |
+          test -n "$DENO_DEPLOY_TOKEN"
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header "Authorization: Bearer $DENO_DEPLOY_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data @deploy-payload.json \
+            "https://api.deno.com/v2/apps/$DENO_APP_SLUG/deploy"
