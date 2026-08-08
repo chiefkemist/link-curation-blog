@@ -105,7 +105,7 @@ jobs:
               }
             }' > deploy-payload.json
 
-          for asset in $(rg --files dist | sort); do
+          for asset in $(rg --files -uu dist | sort); do
             base64 -w0 "$asset" > asset-content.b64
             jq --arg path "$asset" --rawfile content asset-content.b64 \
               '.assets[$path] = {
