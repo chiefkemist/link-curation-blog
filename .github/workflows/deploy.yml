@@ -105,7 +105,9 @@ jobs:
               }
             }' > deploy-payload.json
 
-          for asset in $(rg --files -uu dist | sort); do
+          test -f dist/index.ts
+          asset_count=0
+          while IFS= read -r asset; do
             base64 -w0 "$asset" > asset-content.b64
             jq --arg path "$asset" --rawfile content asset-content.b64 \
               '.assets[$path] = {
@@ -114,7 +116,11 @@ jobs:
                 content: $content
               }' deploy-payload.json > deploy-payload.next.json
             mv deploy-payload.next.json deploy-payload.json
-          done
+            asset_count=$((asset_count + 1))
+          done < <(find dist -type f -print | sort)
+
+          test "$asset_count" -gt 1
+          jq -e '.assets["dist/index.ts"]' deploy-payload.json > /dev/null
 
       - name: Deploy to Deno Deploy
         env:
