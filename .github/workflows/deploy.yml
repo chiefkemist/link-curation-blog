@@ -84,6 +84,7 @@ jobs:
           npm ci
           npm run generate
           npm run build
+          cp -R .output/server dist
 
       - name: Build Deno Deploy source request
         env:
@@ -95,7 +96,7 @@ jobs:
               config: {
                 runtime: {
                   type: "dynamic",
-                  entrypoint: ".output/server/index.ts"
+                  entrypoint: "dist/index.ts"
                 }
               },
               labels: { "custom.git_sha": $sha },
@@ -104,7 +105,7 @@ jobs:
               }
             }' > deploy-payload.json
 
-          for asset in $(rg --files -uu .output/server | sort); do
+          for asset in $(rg --files dist | sort); do
             base64 -w0 "$asset" > asset-content.b64
             jq --arg path "$asset" --rawfile content asset-content.b64 \
               '.assets[$path] = {
