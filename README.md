@@ -5,6 +5,7 @@ This is the minimal starting point for turning community-shared links into a res
 ## Contents
 
 - `index.tsx` — a dependency-free Deno Deploy entrypoint that serves the starter page.
+- `posts/` — numbered, source-grounded Markdown posts imported from Discord. Each post keeps Discord provenance in frontmatter and embeds its original URL with `{{< source-link url="..." label="Read the original source" >}}`.
 - `.github/workflows/deploy.yml` — validates the entrypoint and deploys it through the current Deno Deploy v2 API.
 
 ## Deploying
