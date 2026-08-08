@@ -96,9 +96,9 @@ jobs:
               }
             }' > deploy-payload.json
 
-          for asset in deno.json package.json package-lock.json tsconfig.json vite.config.ts src/generated-posts.json $(rg --files src scripts | sort); do
-            content=$(base64 -w0 "$asset")
-            jq --arg path "$asset" --arg content "$content" \
+          for asset in deno.json package.json package-lock.json tsconfig.json vite.config.ts src/generated-posts.json $(git ls-files src scripts | sort); do
+            base64 -w0 "$asset" > asset-content.b64
+            jq --arg path "$asset" --rawfile content asset-content.b64 \
               '.assets[$path] = {
                 kind: "file",
                 encoding: "base64",
