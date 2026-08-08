@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite dev",
     "generate": "node scripts/generate-posts.mjs",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build",
+    "check": "tsc --noEmit",
     "start": "node .output/server/index.mjs"
   },
   "dependencies": {

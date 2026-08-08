@@ -32,7 +32,9 @@ jobs:
         run: npm run generate
 
       - name: Build and type-check TanStack Start
-        run: npm run build
+        run: |
+          npm run build
+          npm run check
 
       - name: Verify TanStack Start production server
         run: |
