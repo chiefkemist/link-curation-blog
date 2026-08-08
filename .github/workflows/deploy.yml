@@ -83,7 +83,7 @@ jobs:
               production: true
             }' > deploy-payload.json
 
-          for asset in deno.json deno.lock main.ts client.ts vite.config.ts deploy-entrypoint.ts $(rg --files assets lib routes posts | sort); do
+          for asset in deno.json deno.lock main.ts client.ts vite.config.ts deploy-entrypoint.ts assets/styles.css $(rg --files lib routes posts | sort); do
             content=$(base64 -w0 "$asset")
             jq --arg path "$asset" --arg content "$content" \
               '.assets[$path] = {
@@ -93,6 +93,8 @@ jobs:
               }' deploy-payload.json > deploy-payload.next.json
             mv deploy-payload.next.json deploy-payload.json
           done
+
+          test -n "$(jq -r '.assets["assets/styles.css"].content // empty' deploy-payload.json)"
 
       - name: Deploy to Deno Deploy
         env:
