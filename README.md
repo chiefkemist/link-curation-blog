@@ -27,6 +27,6 @@ npm run build
 npm start
 ```
 
-The generated production server listens on port 3000 by default. GitHub Actions
-checks both the home page and a rendered post before and after deploying to Deno
-Deploy.
+Nitro's Deno Deploy preset emits `.output/server/index.ts`; the generated server
+listens on port 8000 by default. GitHub Actions checks both the home page and a
+rendered post before and after deploying to Deno Deploy.

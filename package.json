@@ -8,7 +8,7 @@
     "generate": "node scripts/generate-posts.mjs",
     "build": "vite build",
     "check": "tsc --noEmit",
-    "start": "node .output/server/index.mjs"
+    "start": "deno run -A .output/server/index.ts"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.170.23",

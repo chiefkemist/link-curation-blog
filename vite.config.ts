@@ -13,6 +13,6 @@ export default defineConfig({
   plugins: [
     tanstackStart({ srcDirectory: "src" }),
     viteReact(),
-    nitro(),
+    nitro({ preset: "deno-deploy" }),
   ],
 });

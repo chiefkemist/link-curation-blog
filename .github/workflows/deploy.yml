@@ -25,6 +25,11 @@ jobs:
           node-version: 24
           cache: npm
 
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
       - name: Install dependencies
         run: npm ci
 
@@ -38,14 +43,14 @@ jobs:
 
       - name: Verify TanStack Start production server
         run: |
-          test -f .output/server/index.mjs
-          PORT=3000 npm start &
+          test -f .output/server/index.ts
+          npm start &
           server_pid=$!
           trap 'kill "$server_pid"' EXIT
 
           for attempt in $(seq 1 30); do
-            if home=$(curl --fail-with-body --silent --show-error http://127.0.0.1:3000/); then
-              if post=$(curl --fail-with-body --silent --show-error http://127.0.0.1:3000/posts/010-ai-and-the-university); then
+            if home=$(curl --fail-with-body --silent --show-error http://127.0.0.1:8000/); then
+              if post=$(curl --fail-with-body --silent --show-error http://127.0.0.1:8000/posts/010-ai-and-the-university); then
                 if [[ "$home" == *"Link Curation Blog"* && "$post" == *"Watch the original video"* && "$post" == *"markdown-body"* ]]; then
                   exit 0
                 fi
@@ -89,7 +94,7 @@ jobs:
                 build: "npm run build",
                 runtime: {
                   type: "dynamic",
-                  entrypoint: ".output/server/index.mjs"
+                  entrypoint: ".output/server/index.ts"
                 }
               },
               labels: { "custom.git_sha": $sha },

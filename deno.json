@@ -6,7 +6,7 @@
     "build": "npm run build",
     "runtime": {
       "type": "dynamic",
-      "entrypoint": ".output/server/index.mjs"
+      "entrypoint": ".output/server/index.ts"
     }
   }
 }
