@@ -37,6 +37,9 @@ jobs:
       - name: Build Fresh app
         run: deno task build
 
+      - name: Verify Fresh production entrypoint
+        run: test -f _fresh/compiled-entry.js
+
   deploy:
     needs: validate
     runs-on: ubuntu-latest
@@ -58,6 +61,9 @@ jobs:
       - name: Build Fresh app
         run: deno task build
 
+      - name: Verify Fresh production entrypoint
+        run: test -f _fresh/compiled-entry.js
+
       - name: Build Deno Deploy v2 request
         env:
           GIT_SHA: ${{ github.sha }}
@@ -66,9 +72,12 @@ jobs:
             '{
               assets: {},
               config: {
-                framework: "fresh",
                 install: "deno install",
-                build: "deno task build"
+                build: "deno task build",
+                runtime: {
+                  type: "dynamic",
+                  entrypoint: "_fresh/compiled-entry.js"
+                }
               },
               labels: { "custom.git_sha": $sha },
               production: true

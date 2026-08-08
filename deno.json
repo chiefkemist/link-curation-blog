@@ -3,12 +3,15 @@
   "tasks": {
     "dev": "vite",
     "build": "vite build",
-    "start": "deno serve -A _fresh/server.js"
+    "start": "deno run -A _fresh/compiled-entry.js"
   },
   "deploy": {
-    "framework": "fresh",
     "install": "deno install",
-    "build": "deno task build"
+    "build": "deno task build",
+    "runtime": {
+      "type": "dynamic",
+      "entrypoint": "_fresh/compiled-entry.js"
+    }
   },
   "imports": {
     "fresh": "jsr:@fresh/core@^2.2.2",
