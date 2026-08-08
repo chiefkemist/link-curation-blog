@@ -40,7 +40,7 @@ jobs:
       - name: Verify Fresh production entrypoint
         run: |
           test -f _fresh/server.js
-          PORT=8000 deno task start &
+          deno run -A deploy-entrypoint.ts &
           server_pid=$!
           trap 'kill "$server_pid"' EXIT
 
@@ -76,9 +76,12 @@ jobs:
             '{
               assets: {},
               config: {
-                framework: "fresh",
                 install: "deno install",
-                build: "deno task build"
+                build: "deno task build",
+                runtime: {
+                  type: "dynamic",
+                  entrypoint: "deploy-entrypoint.ts"
+                }
               },
               labels: { "custom.git_sha": $sha },
               production: {
@@ -86,7 +89,7 @@ jobs:
               }
             }' > deploy-payload.json
 
-          for asset in deno.json deno.lock main.ts client.ts vite.config.ts assets/styles.css $(rg --files lib routes posts | sort); do
+          for asset in deno.json deno.lock main.ts client.ts vite.config.ts deploy-entrypoint.ts assets/styles.css $(rg --files lib routes posts | sort); do
             content=$(base64 -w0 "$asset")
             jq --arg path "$asset" --arg content "$content" \
               '.assets[$path] = {
