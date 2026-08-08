@@ -29,13 +29,16 @@ jobs:
         run: deno install
 
       - name: Check formatting
-        run: deno fmt --check main.ts client.ts vite.config.ts lib routes
+        run: deno fmt --check main.ts client.ts vite.config.ts deploy-entrypoint.ts lib routes
 
       - name: Type-check Fresh app
         run: deno check main.ts client.ts vite.config.ts lib/posts.ts routes/index.tsx 'routes/posts/[slug].tsx'
 
       - name: Build Fresh app
         run: deno task build
+
+      - name: Type-check deploy entrypoint
+        run: deno check deploy-entrypoint.ts
 
   deploy:
     needs: validate
@@ -58,17 +61,26 @@ jobs:
       - name: Build Fresh app
         run: deno task build
 
+      - name: Type-check deploy entrypoint
+        run: deno check deploy-entrypoint.ts
+
       - name: Build Deno Deploy v2 request
         env:
           GIT_SHA: ${{ github.sha }}
         run: |
-          jq -n --arg sha "$GIT_SHA" \
+          jq -n --rawfile entrypoint deploy-entrypoint.ts --arg sha "$GIT_SHA" \
             '{
-              assets: {},
+              assets: {
+                "deploy-entrypoint.ts": {
+                  kind: "file",
+                  encoding: "utf-8",
+                  content: $entrypoint
+                }
+              },
               config: {
                 runtime: {
                   type: "dynamic",
-                  entrypoint: "_fresh/server.js"
+                  entrypoint: "deploy-entrypoint.ts"
                 }
               },
               labels: { "custom.git_sha": $sha },
