@@ -6,6 +6,8 @@
     "start": "deno run -A _fresh/compiled-entry.js"
   },
   "deploy": {
+    "org": "outcastgeek-tech",
+    "app": "link-curation-blog",
     "install": "deno install",
     "build": "deno task build",
     "runtime": {
