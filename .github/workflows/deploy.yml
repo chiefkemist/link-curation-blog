@@ -46,8 +46,9 @@ jobs:
 
           for attempt in $(seq 1 30); do
             if home=$(curl --fail-with-body --silent --show-error http://127.0.0.1:8000/); then
-              post_path=$(grep -oE 'href="/posts/[^"]+' <<<"$home" | head -n 1 | cut -d '"' -f 2)
-              if [ -n "$post_path" ] && post=$(curl --fail-with-body --silent --show-error "http://127.0.0.1:8000$post_path"); then
+              if [[ "$home" =~ href=\"(/posts/[^\"]+)\" ]]; then
+                post_path="${BASH_REMATCH[1]}"
+                post=$(curl --fail-with-body --silent --show-error "http://127.0.0.1:8000$post_path")
                 grep -Fq "Link Curation Blog" <<<"$home"
                 grep -Fq "Source" <<<"$post"
                 exit 0
@@ -93,8 +94,9 @@ jobs:
         run: |
           for attempt in $(seq 1 30); do
             if home=$(curl --fail-with-body --silent --show-error "$BLOG_URL/"); then
-              post_path=$(grep -oE 'href="/posts/[^"]+' <<<"$home" | head -n 1 | cut -d '"' -f 2)
-              if [ -n "$post_path" ] && post=$(curl --fail-with-body --silent --show-error "$BLOG_URL$post_path"); then
+              if [[ "$home" =~ href=\"(/posts/[^\"]+)\" ]]; then
+                post_path="${BASH_REMATCH[1]}"
+                post=$(curl --fail-with-body --silent --show-error "$BLOG_URL$post_path")
                 if grep -Fq "Link Curation Blog" <<<"$home" && grep -Fq "Source" <<<"$post"; then
                   exit 0
                 fi
