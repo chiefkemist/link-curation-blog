@@ -43,52 +43,21 @@ jobs:
   deploy:
     needs: validate
     runs-on: ubuntu-latest
-    env:
-      DENO_APP_SLUG: link-curation-blog
     steps:
-      - name: Check out source
-        uses: actions/checkout@v4
-
-      - name: Install Deno
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.x
-          cache: true
-
-      - name: Install Fresh dependencies
-        run: deno install
-
-      - name: Build Fresh app
-        run: deno task build
-
-      - name: Verify Fresh production entrypoint
-        run: test -f _fresh/compiled-entry.js
-
-      - name: Deploy to Deno Deploy
-        env:
-          DENO_DEPLOY_TOKEN: ${{ secrets.DENO_DEPLOY_TOKEN }}
-        run: |
-          test -n "$DENO_DEPLOY_TOKEN"
-          deno deploy . \
-            --json \
-            --non-interactive \
-            --org outcastgeek-tech \
-            --app "$DENO_APP_SLUG" \
-            --prod
-
-      - name: Verify production routes
+      - name: Verify Deno Deploy production routes
         env:
           BLOG_URL: https://link-curation-blog.outcastgeek-tech.deno.net
         run: |
-          for attempt in $(seq 1 30); do
+          for attempt in $(seq 1 150); do
             if home=$(curl --fail-with-body --silent --show-error "$BLOG_URL/"); then
-              break
+              post_path=$(grep -oE 'href="/posts/[^"]+' <<<"$home" | head -n 1 | cut -d '"' -f 2)
+              if [ -n "$post_path" ] && post=$(curl --fail-with-body --silent --show-error "$BLOG_URL$post_path"); then
+                if grep -Fq "Link Curation Blog" <<<"$home" && grep -Fq "Source" <<<"$post"; then
+                  exit 0
+                fi
+              fi
             fi
             sleep 2
           done
-          test -n "${home:-}"
-          grep -Fq "Link Curation Blog" <<<"$home"
-          post_path=$(grep -oE 'href="/posts/[^"]+' <<<"$home" | head -n 1 | cut -d '"' -f 2)
-          test -n "$post_path"
-          post=$(curl --fail-with-body --silent --show-error "$BLOG_URL$post_path")
-          grep -Fq "Source" <<<"$post"
+          echo "Deno Deploy did not serve the Fresh blog within five minutes"
+          exit 1

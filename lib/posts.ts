@@ -12,6 +12,12 @@ export interface Post {
 
 type Frontmatter = Record<string, string | string[]>;
 
+const postModules = import.meta.glob<string>("../posts/*.md", {
+  eager: true,
+  import: "default",
+  query: "?raw",
+});
+
 function parseValue(value: string): string | string[] {
   if (value.startsWith('"') && value.endsWith('"')) {
     return JSON.parse(value) as string;
@@ -56,14 +62,10 @@ function parsePost(text: string, slug: string): Post {
 }
 
 export async function loadPosts(): Promise<Post[]> {
-  const posts: Post[] = [];
-
-  for await (const entry of Deno.readDir("posts")) {
-    if (!entry.isFile || !entry.name.endsWith(".md")) continue;
-    const slug = entry.name.slice(0, -3);
-    const text = await Deno.readTextFile("posts/" + entry.name);
-    posts.push(parsePost(text, slug));
-  }
+  const posts = Object.entries(postModules).map(([path, text]) => {
+    const filename = path.slice(path.lastIndexOf("/") + 1);
+    return parsePost(text, filename.slice(0, -3));
+  });
 
   return posts.sort((a, b) => b.sourceSharedAt.localeCompare(a.sourceSharedAt));
 }
