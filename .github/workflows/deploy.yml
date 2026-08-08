@@ -95,7 +95,7 @@ jobs:
               config: {
                 runtime: {
                   type: "dynamic",
-                  entrypoint: "deploy.ts"
+                  entrypoint: ".output/server/index.ts"
                 }
               },
               labels: { "custom.git_sha": $sha },
@@ -104,7 +104,7 @@ jobs:
               }
             }' > deploy-payload.json
 
-          for asset in deploy.ts $(rg --files -uu .output | sort); do
+          for asset in $(rg --files -uu .output/server | sort); do
             base64 -w0 "$asset" > asset-content.b64
             jq --arg path "$asset" --rawfile content asset-content.b64 \
               '.assets[$path] = {
