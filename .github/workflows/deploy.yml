@@ -129,6 +129,11 @@ jobs:
                 ;;
               failed|skipped)
                 jq -c '{status, failure_reason, failure_detail}' <<<"$revision"
+                curl --fail-with-body --silent --show-error \
+                  --header "Authorization: Bearer $DENO_DEPLOY_TOKEN" \
+                  --header "Accept: application/x-ndjson" \
+                  "https://api.deno.com/v2/revisions/$revision_id/build_logs" \
+                  | jq -r '.message // .'
                 exit 1
                 ;;
             esac
