@@ -25,11 +25,17 @@ jobs:
           deno-version: v2.x
           cache: true
 
-      - name: Check formatting
-        run: deno fmt --check index.tsx
+      - name: Install Fresh dependencies
+        run: deno install
 
-      - name: Type-check entrypoint
-        run: deno check index.tsx
+      - name: Check formatting
+        run: deno fmt --check main.ts client.ts vite.config.ts lib routes
+
+      - name: Type-check Fresh app
+        run: deno check main.ts client.ts vite.config.ts lib/posts.ts routes/index.tsx 'routes/posts/[slug].tsx'
+
+      - name: Build Fresh app
+        run: deno task build
 
   deploy:
     needs: validate
@@ -40,32 +46,49 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+          cache: true
+
+      - name: Install Fresh dependencies
+        run: deno install
+
+      - name: Build Fresh app
+        run: deno task build
+
       - name: Build Deno Deploy v2 request
         env:
-          GIT_SHA: ${{ github.sha }}
+          GIT_SHA: \${{ github.sha }}
         run: |
-          jq -n --rawfile source index.tsx --arg sha "$GIT_SHA" \
+          jq -n --arg sha "$GIT_SHA" \
             '{
-              assets: {
-                "index.tsx": {
-                  kind: "file",
-                  encoding: "utf-8",
-                  content: $source
-                }
-              },
+              assets: {},
               config: {
                 runtime: {
                   type: "dynamic",
-                  entrypoint: "index.tsx"
+                  entrypoint: "_fresh/server.js"
                 }
               },
               labels: { "custom.git_sha": $sha },
               production: true
             }' > deploy-payload.json
 
+          for asset in $(rg --files _fresh posts | sort); do
+            content=$(base64 -w0 "$asset")
+            jq --arg path "$asset" --arg content "$content" \
+              '.assets[$path] = {
+                kind: "file",
+                encoding: "base64",
+                content: $content
+              }' deploy-payload.json > deploy-payload.next.json
+            mv deploy-payload.next.json deploy-payload.json
+          done
+
       - name: Deploy to Deno Deploy
         env:
-          DENO_DEPLOY_TOKEN: ${{ secrets.DENO_DEPLOY_TOKEN }}
+          DENO_DEPLOY_TOKEN: \${{ secrets.DENO_DEPLOY_TOKEN }}
         run: |
           test -n "$DENO_DEPLOY_TOKEN"
           curl --fail-with-body --silent --show-error \

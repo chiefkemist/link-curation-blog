@@ -1,26 +1,27 @@
 # Link Curation Blog
 
-This is the minimal starting point for turning community-shared links into a researched, reviewable Markdown blog.
+Fresh 2 application for rendering the Markdown posts collected from the Ubuntu TechHive Discord channel.
 
-## Contents
+## Structure
 
-- `index.tsx` — a dependency-free Deno Deploy entrypoint that serves the starter page.
-- `posts/` — numbered, source-grounded Markdown posts imported from Discord. Each post keeps Discord provenance in frontmatter and embeds its original URL with `{{< source-link url="..." label="Read the original source" >}}`.
-- `.github/workflows/deploy.yml` — validates the entrypoint and deploys it through the current Deno Deploy v2 API.
+- routes/ contains the Fresh index and individual post routes.
+- lib/posts.ts parses frontmatter, renders the supported Markdown subset, and expands source-link shortcodes.
+- posts/ contains the 1,141 imported Markdown posts with Discord provenance.
+- assets/styles.css contains the site stylesheet loaded by the Fresh Vite client entrypoint.
 
-## Deploying
+## Local development
 
-The repository is connected to the Deno Deploy app with the slug `link-curation-blog`.
+Install dependencies and build:
 
-Add a GitHub Actions repository secret named `DENO_DEPLOY_TOKEN` containing an organization-scoped Deno Deploy v2 token. Pushes to `main` then run formatting and type checks before submitting the source to Deno Deploy.
+    deno install
+    deno task build
 
-The workflow sends the token only to the deployment request. No credential is stored in the repository or in the application source.
+Start the production server:
 
-## Local check
+    deno task start
 
-With Deno installed:
+Start Vite development mode:
 
-```sh
-deno fmt --check index.tsx
-deno check index.tsx
-```
+    deno task dev
+
+Fresh 2 uses Vite for development and production builds. The build output is written to _fresh/ and the deployment workflow packages that server plus the posts and static assets.
