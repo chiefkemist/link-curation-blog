@@ -32,7 +32,7 @@ jobs:
         run: deno fmt --check main.ts client.ts vite.config.ts lib routes
 
       - name: Type-check Fresh app
-        run: deno check main.ts client.ts vite.config.ts deploy-entrypoint.ts lib/posts.ts routes/index.tsx 'routes/posts/[slug].tsx'
+        run: deno check main.ts client.ts vite.config.ts lib/posts.ts routes/index.tsx 'routes/posts/[slug].tsx'
 
       - name: Build Fresh app
         run: deno task build
