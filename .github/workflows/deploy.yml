@@ -103,6 +103,7 @@ jobs:
 
             case "$status" in
               succeeded)
+                jq -c '{id, status, config, labels}' <<<"$revision"
                 exit 0
                 ;;
               failed|skipped)
@@ -120,8 +121,9 @@ jobs:
       - name: Verify Deno Deploy production routes
         env:
           BLOG_URL: https://link-curation-blog.outcastgeek-tech.deno.net
+          DENO_DEPLOY_TOKEN: ${{ secrets.DENO_DEPLOY_TOKEN }}
         run: |
-          for attempt in $(seq 1 150); do
+          for attempt in $(seq 1 30); do
             if home=$(curl --fail-with-body --silent --show-error "$BLOG_URL/"); then
               post_path=$(grep -oE 'href="/posts/[^"]+' <<<"$home" | head -n 1 | cut -d '"' -f 2)
               if [ -n "$post_path" ] && post=$(curl --fail-with-body --silent --show-error "$BLOG_URL$post_path"); then
@@ -132,5 +134,11 @@ jobs:
             fi
             sleep 2
           done
-          echo "Deno Deploy did not serve the Fresh blog within five minutes"
+          echo "Deno Deploy did not serve the Fresh blog within one minute"
+          start=$(date -u -d '10 minutes ago' +%Y-%m-%dT%H:%M:%SZ)
+          end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          curl --fail-with-body --silent --show-error \
+            --header "Authorization: Bearer $DENO_DEPLOY_TOKEN" \
+            "https://api.deno.com/v2/apps/$DENO_APP_SLUG/logs?start=$start&end=$end&limit=100" \
+            | jq -c '{logs: [.logs[]? | {timestamp, level, message, revision_id}]}'
           exit 1
