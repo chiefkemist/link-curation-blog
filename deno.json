@@ -6,6 +6,8 @@
     "start": "deno serve -A _fresh/server.js"
   },
   "deploy": {
+    "org": "outcastgeek-tech",
+    "app": "link-curation-blog",
     "framework": "fresh",
     "install": "deno install",
     "build": "deno task build"
