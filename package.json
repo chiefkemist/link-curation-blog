@@ -8,7 +8,7 @@
     "generate": "node scripts/generate-posts.mjs",
     "build": "vite build",
     "check": "tsc --noEmit",
-    "start": "deno run -A .output/server/index.ts"
+    "start": "deno run -A deploy.ts"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.170.23",
@@ -19,12 +19,15 @@
     "sanitize-html": "^2.17.0"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^22.5.4",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@types/sanitize-html": "^2.16.0",
     "@vitejs/plugin-react": "^6.0.1",
+    "daisyui": "^5.7.16",
     "nitro": "^3.0.260311-beta",
+    "tailwindcss": "^4.3.3",
     "typescript": "^6.0.2",
     "vite": "^8.0.14"
   }

@@ -24,11 +24,11 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="corporate">
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className="min-h-screen bg-base-200 text-base-content antialiased">
         {children}
         <Scripts />
       </body>

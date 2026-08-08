@@ -51,7 +51,9 @@ jobs:
           for attempt in $(seq 1 30); do
             if home=$(curl --fail-with-body --silent --show-error http://127.0.0.1:8000/); then
               if post=$(curl --fail-with-body --silent --show-error http://127.0.0.1:8000/posts/010-ai-and-the-university); then
-                if [[ "$home" == *"Link Curation Blog"* && "$post" == *"Watch the original video"* && "$post" == *"markdown-body"* ]]; then
+                stylesheet=$(grep -aoE 'href="/assets/styles-[^"]+\.css"' <<<"$home" | head -1 | cut -d'"' -f2)
+                css=$(curl --fail-with-body --silent --show-error "http://127.0.0.1:8000$stylesheet" || true)
+                if [[ "$home" == *"Useful links,"* && "$post" == *"Watch the original video"* && "$post" == *"markdown-body"* && -n "$stylesheet" && "$css" == *'.btn{'* && "$css" == *'--color-base-100'* ]]; then
                   exit 0
                 fi
               fi
@@ -94,7 +96,7 @@ jobs:
                 build: "npm run build",
                 runtime: {
                   type: "dynamic",
-                  entrypoint: ".output/server/index.ts"
+                  entrypoint: "deploy.ts"
                 }
               },
               labels: { "custom.git_sha": $sha },
@@ -103,7 +105,7 @@ jobs:
               }
             }' > deploy-payload.json
 
-          for asset in deno.json package.json package-lock.json tsconfig.json vite.config.ts src/generated-posts.json $(git ls-files src scripts | sort); do
+          for asset in deno.json deploy.ts package.json package-lock.json tsconfig.json vite.config.ts src/generated-posts.json $(git ls-files src scripts | sort); do
             base64 -w0 "$asset" > asset-content.b64
             jq --arg path "$asset" --rawfile content asset-content.b64 \
               '.assets[$path] = {
@@ -166,7 +168,9 @@ jobs:
           for attempt in $(seq 1 30); do
             if home=$(curl --fail-with-body --silent --show-error "$BLOG_URL/"); then
               if post=$(curl --fail-with-body --silent --show-error "$BLOG_URL/posts/010-ai-and-the-university"); then
-                if [[ "$home" == *"Link Curation Blog"* && "$post" == *"Watch the original video"* && "$post" == *"markdown-body"* ]]; then
+                stylesheet=$(grep -aoE 'href="/assets/styles-[^"]+\.css"' <<<"$home" | head -1 | cut -d'"' -f2)
+                css=$(curl --fail-with-body --silent --show-error "$BLOG_URL$stylesheet" || true)
+                if [[ "$home" == *"Useful links,"* && "$post" == *"Watch the original video"* && "$post" == *"markdown-body"* && -n "$stylesheet" && "$css" == *'.btn{'* && "$css" == *'--color-base-100'* ]]; then
                   exit 0
                 fi
               fi
