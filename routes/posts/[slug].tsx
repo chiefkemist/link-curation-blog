@@ -1,3 +1,4 @@
+import { CSS } from "@deno/gfm";
 import { findPost, loadPosts, renderMarkdown } from "../../lib/posts.ts";
 
 export default async function PostPage(
@@ -32,7 +33,10 @@ export default async function PostPage(
             review.
           </p>
         )}
+        <style dangerouslySetInnerHTML={{ __html: CSS }} />
         <div
+          class="markdown-body"
+          data-color-mode="light"
           dangerouslySetInnerHTML={{ __html: renderMarkdown(post.body) }}
         />
       </article>

@@ -38,84 +38,53 @@ jobs:
         run: deno task build
 
       - name: Verify Fresh production entrypoint
-        run: test -f _fresh/server.js
+        run: |
+          test -f _fresh/server.js
+          PORT=8000 deno task start &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+
+          for attempt in $(seq 1 30); do
+            if home=$(curl --fail-with-body --silent --show-error http://127.0.0.1:8000/); then
+              post_path=$(grep -oE 'href="/posts/[^"]+' <<<"$home" | head -n 1 | cut -d '"' -f 2)
+              if [ -n "$post_path" ] && post=$(curl --fail-with-body --silent --show-error "http://127.0.0.1:8000$post_path"); then
+                grep -Fq "Link Curation Blog" <<<"$home"
+                grep -Fq "Source" <<<"$post"
+                exit 0
+              fi
+            fi
+            sleep 1
+          done
+
+          echo "Fresh production entrypoint did not serve the blog"
+          exit 1
 
   deploy:
     needs: validate
     runs-on: ubuntu-latest
     env:
       DENO_APP_SLUG: link-curation-blog
+      DENO_ORG_SLUG: outcastgeek-tech
     steps:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Build Deno Deploy v2 request
-        env:
-          GIT_SHA: ${{ github.sha }}
-        run: |
-          jq -n --arg sha "$GIT_SHA" \
-            '{
-              assets: {},
-              config: {
-                framework: "fresh",
-                install: "deno install",
-                build: "deno task build"
-              },
-              labels: { "custom.git_sha": $sha },
-              production: {
-                domains: ["link-curation-blog.outcastgeek-tech.deno.net"]
-              }
-            }' > deploy-payload.json
-
-          for asset in deno.json deno.lock main.ts client.ts vite.config.ts assets/styles.css $(rg --files lib routes posts | sort); do
-            content=$(base64 -w0 "$asset")
-            jq --arg path "$asset" --arg content "$content" \
-              '.assets[$path] = {
-                kind: "file",
-                encoding: "base64",
-                content: $content
-              }' deploy-payload.json > deploy-payload.next.json
-            mv deploy-payload.next.json deploy-payload.json
-          done
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
 
       - name: Deploy to Deno Deploy
         env:
           DENO_DEPLOY_TOKEN: ${{ secrets.DENO_DEPLOY_TOKEN }}
         run: |
           test -n "$DENO_DEPLOY_TOKEN"
-          response=$(curl --fail-with-body --silent --show-error \
-            --request POST \
-            --header "Authorization: Bearer $DENO_DEPLOY_TOKEN" \
-            --header "Content-Type: application/json" \
-            --data @deploy-payload.json \
-            "https://api.deno.com/v2/apps/$DENO_APP_SLUG/deploy")
-
-          revision_id=$(jq -r '.id // empty' <<<"$response")
-          test -n "$revision_id"
-
-          for attempt in $(seq 1 60); do
-            revision=$(curl --fail-with-body --silent --show-error \
-              --header "Authorization: Bearer $DENO_DEPLOY_TOKEN" \
-              "https://api.deno.com/v2/revisions/$revision_id")
-            status=$(jq -r '.status // empty' <<<"$revision")
-            echo "Deno revision $revision_id: $status"
-
-            case "$status" in
-              succeeded)
-                jq -c '{id, status, config, labels, timelines}' <<<"$revision"
-                exit 0
-                ;;
-              failed|skipped)
-                jq -c '{status, failure_reason, failure_detail}' <<<"$revision"
-                exit 1
-                ;;
-            esac
-
-            sleep 5
-          done
-
-          echo "Timed out waiting for Deno revision $revision_id"
-          exit 1
+          deno deploy \
+            --json \
+            --non-interactive \
+            --org "$DENO_ORG_SLUG" \
+            --app "$DENO_APP_SLUG" \
+            --prod
 
       - name: Verify Deno Deploy production routes
         env:

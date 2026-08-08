@@ -1,9 +1,6 @@
 import { App, staticFiles } from "fresh";
 
-export const app = new App()
-  .use(staticFiles())
-  .fsRoutes();
+export const app = new App();
 
-if (import.meta.main) {
-  app.listen();
-}
+app.use(staticFiles());
+app.fsRoutes();
